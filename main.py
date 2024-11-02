@@ -63,4 +63,4 @@ def upload_image():
         return {"error": "File is not an image"}, 400
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True)
