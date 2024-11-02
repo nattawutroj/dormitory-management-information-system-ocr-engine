@@ -4,13 +4,13 @@ from PIL import Image
 from ultralytics import YOLO
 import cv2
 import numpy as np
-import pytesseract
-
-pytesseract.pytesseract.tesseract_cmd = '/opt/homebrew/bin/tesseract'
+import easyocr
+import re
 
 app = Flask(__name__)
 
 model = YOLO("./model/best.pt")
+reader = easyocr.Reader(['en'])  # ใช้ English language model
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -49,11 +49,16 @@ def upload_image():
         labeled_img_path = "./tem/labeled_image.jpg"
         cv2.imwrite(labeled_img_path, background)
         
+        # OCR processing with easyocr
         ocr_image = Image.open(labeled_img_path)
-        custom_config = r'--oem 3 --psm 6 outputbase digits'
-        ocr_result = pytesseract.image_to_string(ocr_image, config=custom_config)
+        ocr_result = reader.readtext(np.array(ocr_image), detail=0)
         
-        return jsonify({"ocr_result": ocr_result}), 200
+        # Filter only digits using regular expressions
+        numbers_only = " ".join(re.findall(r'\d+', " ".join(ocr_result)))
+        
+        final = numbers_only.replace(" ","")
+        
+        return jsonify({"ocr_result": final}), 200
     else:
         return {"error": "File is not an image"}, 400
 
