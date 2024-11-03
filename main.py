@@ -9,7 +9,7 @@ import re
 
 app = Flask(__name__)
 
-model = YOLO("./model/best.pt")
+model = YOLO("./src/model/best.pt")
 reader = easyocr.Reader(['en'])  # ใช้ English language model
 
 @app.route('/upload', methods=['POST'])
@@ -46,7 +46,7 @@ def upload_image():
                     label_position = (x1, y1 - 10 if y1 - 10 > 10 else y1 + 10)
                     cv2.putText(background, label, label_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         
-        labeled_img_path = "./tem/labeled_image.jpg"
+        labeled_img_path = "./src/tem/labeled_image.jpg"
         cv2.imwrite(labeled_img_path, background)
         
         # OCR processing with easyocr
@@ -62,5 +62,10 @@ def upload_image():
     else:
         return {"error": "File is not an image"}, 400
 
+
+@app.route('/upload', methods=['GET'])
+def hello_world():
+        return jsonify("hello world /upload"), 200
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=5002)
