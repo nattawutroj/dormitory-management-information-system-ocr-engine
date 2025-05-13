@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -8,8 +8,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies with security updates
 RUN apt-get update && \
+    apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
@@ -18,7 +19,13 @@ RUN apt-get update && \
     libxrender1 \
     tesseract-ocr \
     tesseract-ocr-tha \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && apt-get autoremove -y
+
+# Create non-root user
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
@@ -33,7 +40,7 @@ COPY . .
 RUN mkdir -p /app/uploads
 
 # Expose port
-EXPOSE 5000
+EXPOSE 9002
 
 # Set environment variables for Flask
 ENV FLASK_APP=main.py
