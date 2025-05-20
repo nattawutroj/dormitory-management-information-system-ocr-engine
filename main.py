@@ -352,16 +352,16 @@ def generate_excel():
         )
 
         # Set bottom sheet values
-        bottom_sheet['M1'].font = font
+        bottom_sheet['M1'].font = font10
         bottom_sheet['M1'].value = template_data['base_info']['all_electric_total']
         
-        bottom_sheet['N1'].font = font
+        bottom_sheet['N1'].font = font10
         bottom_sheet['N1'].value = template_data['base_info']['all_delay_total']
         
-        bottom_sheet['O1'].font = font
+        bottom_sheet['O1'].font = font10
         bottom_sheet['O1'].value = template_data['base_info']['all_total']
         
-        bottom_sheet['I3'].font = font
+        bottom_sheet['I3'].font = font10
         bottom_sheet['I3'].value = f"=BAHTTEXT({template_data['base_info']['all_total']})"
         
         # Set other bottom sheet values
