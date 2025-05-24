@@ -24,8 +24,7 @@ RUN apt-get update && \
     && apt-get autoremove -y
 
 # Create non-root user
-RUN useradd -m appuser && chown -R appuser:appuser /app
-USER appuser
+RUN useradd -m appuser
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
@@ -36,8 +35,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p /app/uploads
+# Ensure ownership and permissions for app files and writable dirs
+RUN mkdir -p /app/uploads /app/src/tem && \
+    chown -R appuser:appuser /app && \
+    chmod -R u+rwX /app/src/tem
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 9002
