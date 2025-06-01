@@ -13,6 +13,10 @@ from openpyxl.utils import get_column_letter
 from openpyxl.cell.cell import MergedCell
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 import os
+import shutil
+import qrcode
+from PIL import Image, ImageDraw
+from openpyxl.drawing.image import Image as XLImage
 
 app = Flask(__name__)
 CORS(app)  # Allow CORS for localhost
@@ -572,6 +576,134 @@ def generate_f2_excel():
             as_attachment=True,
             download_name='electric_bill_f2.xlsx'
         )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/generate-pay-report', methods=['POST'])
+def generate_pay_report():
+    try:
+        # Get data from request
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['name-surename', 'student_id', 'major', 'faculty', 
+                         'date_now', 'personal_id', 'room_number', 
+                         'dormitory_name', 'electric_date_name', 'price']
+        
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+
+        # Create result directory if it doesn't exist
+        os.makedirs('result', exist_ok=True)
+
+        template_path = os.path.abspath('filestemplate/pay_report.xlsx')
+        output_path = os.path.abspath('result/pay_report_result.xlsx')
+
+        try:
+            # Copy template file
+            shutil.copy2(template_path, output_path)
+            
+            # Load workbook using openpyxl
+            wb = load_workbook(output_path)
+            sheet = wb.active
+            
+            # Fill in the data
+            sheet['B4'] = data['name-surename']
+            sheet['B5'] = data['student_id']
+            sheet['B6'] = data['major']
+            sheet['B7'] = data['faculty']
+            sheet['F4'] = data['date_now']
+            sheet['F5'] = data['personal_id']
+            sheet['F6'] = data['room_number']
+            sheet['F7'] = data['dormitory_name']
+            sheet['C10'] = data['electric_date_name']
+            sheet['F10'] = data['price']
+
+            # Add images using openpyxl
+            # Resize images using PIL first
+            pil_img1 = Image.open('filestemplate/photo1.png')
+            pil_img2 = Image.open('filestemplate/photo2.png')
+            pil_img3 = Image.open('filestemplate/photo3.png')
+            
+            # Resize images
+            pil_img1 = pil_img1.resize((100, 75), Image.Resampling.LANCZOS)
+            pil_img2 = pil_img2.resize((150, 100), Image.Resampling.LANCZOS)
+            pil_img3 = pil_img3.resize((150, 100), Image.Resampling.LANCZOS)
+            # Save resized images temporarily
+            temp_img1_path = 'result/temp_img1.png'
+            temp_img2_path = 'result/temp_img2.png'
+            temp_img3_path = 'result/temp_img3.png'
+            pil_img1.save(temp_img1_path)
+            pil_img2.save(temp_img2_path)
+            pil_img3.save(temp_img3_path)
+            
+            # Load resized images into Excel
+            img1 = XLImage(temp_img1_path)
+            img2 = XLImage(temp_img2_path)
+            img3 = XLImage(temp_img3_path)
+            # Add photo1.png to A27
+            sheet.add_image(img1, 'A27')
+
+            # Add photo2.png to A1 and A18
+            sheet.add_image(img2, 'A1')
+            sheet.add_image(img3, 'A19')
+
+            # Get QR code data from B33
+            qr_data = sheet['B33'].value
+            if not qr_data:
+                qr_data = "No data"  # Default value if B33 is empty
+
+            # Generate QR Code
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(str(qr_data))  # Convert to string to ensure compatibility
+            qr.make(fit=True)
+
+            # Create QR code image
+            qr_img = qr.make_image(fill_color="black", back_color="white")
+            
+            # Resize QR code
+            qr_img = qr_img.resize((100, 100), Image.Resampling.LANCZOS)
+            
+            # Save QR code temporarily
+            qr_path = os.path.abspath('result/qr_temp.png')
+            qr_img.save(qr_path)
+
+            # Add QR code to Excel using openpyxl
+            qr_excel_img = XLImage(qr_path)
+            sheet.add_image(qr_excel_img, 'A32')
+            
+            # Save the workbook
+            wb.save(output_path)
+            
+            # Read the generated file
+            with open(output_path, 'rb') as f:
+                excel_file = BytesIO(f.read())
+            
+            # Clean up temporary files
+            os.remove(output_path)
+            os.remove(qr_path)
+            os.remove(temp_img1_path)
+            os.remove(temp_img2_path)
+            os.remove(temp_img3_path)
+            
+            return send_file(
+                excel_file,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name='pay_report.xlsx'
+            )
+
+        except FileNotFoundError:
+            return jsonify({"error": f"Template file not found at {template_path}"}), 404
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
