@@ -708,5 +708,64 @@ def generate_pay_report():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/generate-slip', methods=['POST'])
+def generate_slip():
+    try:
+        # Get data from request
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['day', 'month', 'year', 'description', 'price']
+        
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+
+        # Create result directory if it doesn't exist
+        os.makedirs('result', exist_ok=True)
+
+        template_path = 'filestemplate/slip.xlsx'
+        output_path = 'result/slip_result.xlsx'
+
+        try:
+            # Copy template file
+            shutil.copy2(template_path, output_path)
+            
+            # Load workbook
+            wb = load_workbook(output_path)
+            sheet = wb.active
+            
+            # Fill in the data
+            sheet['D6'] = data['day']
+            sheet['F6'] = data['month']
+            sheet['H6'] = data['year']
+            sheet['A9'] = data['description']
+            sheet['G9'] = float(data['price'])
+            
+            # Save and close
+            wb.save(output_path)
+            
+            # Read the generated file
+            with open(output_path, 'rb') as f:
+                excel_file = BytesIO(f.read())
+            
+            # Clean up the output file
+            os.remove(output_path)
+            
+            return send_file(
+                excel_file,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name='slip.xlsx'
+            )
+            
+        except FileNotFoundError:
+            return jsonify({"error": f"Template file not found at {template_path}"}), 404
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=9002)
