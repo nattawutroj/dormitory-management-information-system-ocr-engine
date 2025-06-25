@@ -741,6 +741,7 @@ def generate_slip():
             sheet['H6'] = data['year']
             sheet['A9'] = data['description']
             sheet['G9'] = float(data['price'])
+            sheet['C7'] = data['name']
             
             # Save and close
             wb.save(output_path)
